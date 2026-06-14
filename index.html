@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Predictor académico</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+}
+
+/* LANDING */
+#landing {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #e53935;
+  cursor: pointer;
+  transition: transform 1s ease;
+}
+
+.title-box {
+  background: white;
+  padding: 40px 60px;
+  border-radius: 25px;
+  text-align: center;
+}
+
+/* APP */
+#app {
+  position: absolute;
+  top: 100vh;
+  width: 100%;
+  height: 100vh;
+  background: #e53935;
+  transition: top 1s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* CARD CENTRAL */
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 25px;
+  width: 85%;
+  max-width: 500px;
+}
+
+/* HEADER */
+.header {
+  text-align: center;
+  font-weight: bold;
+  color: #e53935;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+/* SLIDERS */
+.slider-group {
+  margin: 20px 0;
+}
+
+.label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+/* BARRA PERSONALIZADA */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 10px;
+  background: linear-gradient(to right, #e53935 0%, #e53935 0%, #ddd 0%, #ddd 100%);
+  outline: none;
+}
+
+/* QUITAR PUNTITO */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+/* BOTON */
+button {
+  width: 100%;
+  padding: 12px;
+  background: #e53935;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.result {
+  text-align: center;
+  margin-top: 15px;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LANDING -->
+<div id="landing" onclick="startApp()">
+  <div class="title-box">
+    <h1>PREDICTOR ACADÉMICO</h1>
+    <p>Toca para comenzar</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="card">
+
+    <div class="header" onclick="goBack()">⬅ Volver</div>
+
+    <div class="slider-group">
+      <div class="label">
+        <span>😴 Sueño</span>
+        <span id="v1">0h</span>
+      </div>
+      <input type="range" value="0" oninput="updateBar(this,1)">
+    </div>
+
+    <div class="slider-group">
+      <div class="label">
+        <span>📚 Estudio</span>
+        <span id="v2">0h</span>
+      </div>
+      <input type="range" value="0" oninput="updateBar(this,2)">
+    </div>
+
+    <div class="slider-group">
+      <div class="label">
+        <span>🏀 Extraescolares</span>
+        <span id="v3">0h</span>
+      </div>
+      <input type="range" value="0" oninput="updateBar(this,3)">
+    </div>
+
+    <div class="slider-group">
+      <div class="label">
+        <span>🗣 Social</span>
+        <span id="v4">0h</span>
+      </div>
+      <input type="range" value="0" oninput="updateBar(this,4)">
+    </div>
+
+    <div class="slider-group">
+      <div class="label">
+        <span>😵 Estrés</span>
+      </div>
+      <select id="estres">
+        <option value="1">Bajo</option>
+        <option value="2">Medio</option>
+        <option value="3">Alto</option>
+      </select>
+    </div>
+
+    <button onclick="predecir()">Predecir</button>
+
+    <div class="result" id="resultado"></div>
+
+  </div>
+</div>
+
+<script>
+let sliders = document.querySelectorAll('input[type="range"]');
+
+function startApp() {
+  landing.style.transform = "translateY(-100%)";
+  app.style.top = "0";
+}
+
+function goBack() {
+  landing.style.transform = "translateY(0)";
+  app.style.top = "100vh";
+}
+
+function getTotal() {
+  let total = 0;
+  sliders.forEach(s => total += Number(s.value));
+  return total;
+}
+
+function updateBar(slider, index) {
+  let total = getTotal();
+
+  sliders.forEach((s, i) => {
+    let others = total - Number(s.value);
+    let maxAllowed = 24 - others;
+    s.max = maxAllowed >= 0 ? maxAllowed : 0;
+  });
+
+  document.getElementById("v"+index).innerText = slider.value + "h";
+
+  let percent = (slider.value / slider.max) * 100;
+  slider.style.background =
+    `linear-gradient(to right, #e53935 ${percent}%, #ddd ${percent}%)`;
+}
+
+async function predecir() {
+
+  let values = document.querySelectorAll('input[type="range"]');
+
+  let data = {
+    Study_Hours_Per_Day: Number(values[1].value),
+    Sleep_Hours_Per_Day: Number(values[0].value),
+    Extracurricular_Hours_Per_Day: Number(values[2].value),
+    Stress_Level: Number(document.getElementById("estres").value),
+    Social_Hours_Per_Day: Number(values[3].value)
+  };
+
+  let res = await fetch("/predict", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(data)
+  });
+
+  let result = await res.json();
+
+  document.getElementById("resultado").innerText =
+    "📈 GPA estimado: " + result.resultado.toFixed(2);
+}
+</script>
+
+</body>
+</html>
